@@ -37,7 +37,7 @@ jobs:
       with:
         path: packages/windowlist  # Your PKGBUILD dir
         flags: -s --noconfirm     # -s for signing
-        pgpkeys: 4148A59C         # Your key ID
+        pgpkeys: 695B3963472E349D78E00169101EC52C4148A59C    # Your key ID
         pgpkeyserver: hkps://keys.openpgp.org  # Match your upload server
         updpkgsums: false
         srcinfo: false
