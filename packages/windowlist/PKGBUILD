@@ -1,5 +1,5 @@
 # Maintainer: Tuure Piitulainen <tuure.piitulainen@gmail.com>
-
+PACKAGER="n3ptune-plan3t <n3ptune@plan3t>"
 _pkgname="windowlist"
 pkgname="windowlist-git"
 provides=("windowlist")
