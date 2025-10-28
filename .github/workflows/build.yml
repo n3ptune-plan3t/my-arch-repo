@@ -58,7 +58,7 @@ jobs:
           cp "packages/windowlist/$PACKAGE_FILE" release/x86_64/
           echo "Copied $PACKAGE_FILE to release/"
         else
-          echo "No package file found! Build likely failed. Exiting.."
+          echo "No package file found! Build likely failed. Exiting..."
           exit 1
         fi
         
