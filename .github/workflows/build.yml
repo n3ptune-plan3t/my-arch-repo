@@ -1,0 +1,45 @@
+name: Build Arch Packages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Import GPG key
+      run: |
+        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --import YOUR_KEY_ID
+      env:
+        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+    - name: Build package
+      id: build
+      uses: heyhusen/archlinux-package-action@v2
+      with:
+        path: packages/my-package  # Path to your PKGBUILD dir
+        flags: -s --noconfirm     # -s enables signing
+        pgpkeys: YOUR_KEY_ID      # Your GPG key ID
+
+    - name: Generate repo database
+      run: |
+        mkdir -p release/x86_64
+        cp "packages/my-package/*.pkg.tar.zst"* release/x86_64/
+        cd release
+        repo-add --sign --verify my-repo.db.tar.gz x86_64/*.pkg.tar.zst
+
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./release
