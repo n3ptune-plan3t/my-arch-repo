@@ -48,7 +48,7 @@ jobs:
     - name: Generate repo database
       run: |
         mkdir -p release/x86_64
-        cp "packages/my-package/*.pkg.tar.zst"* release/x86_64/
+        cp "packages/windowlist/*.pkg.tar.zst"* release/x86_64/
         cd release
         repo-add --sign --verify my-repo.db.tar.gz x86_64/*.pkg.tar.zst
 
