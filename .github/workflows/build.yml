@@ -16,12 +16,21 @@ jobs:
 
     - name: Import GPG key
       run: |
-        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --import 4148A59C
+        # Write private key to a temp file (from GitHub Secret)
+        echo "${{ secrets.GPG_PRIVATE_KEY }}" > private-key.asc
+        
+        # Import with passphrase (unlocks during import)
+        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --import --pinentry-mode loopback --passphrase-fd 0 private-key.asc
+        
+        # Clean up the temp file for security
+        rm private-key.asc
+        
+        # Verify import (optional, for debugging)
+        gpg --list-secret-keys --keyid-format SHORT
       env:
         GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
+        
     - name: Build package
       id: build
       uses: heyhusen/archlinux-package-action@v2
