@@ -35,10 +35,16 @@ jobs:
       id: build
       uses: heyhusen/archlinux-package-action@v2
       with:
-        path: packages/windowlist  # Path to your PKGBUILD dir
-        flags: -s --noconfirm     # -s enables signing
-        pgpkeys: 4148A59C   # Your GPG key ID
-
+        path: packages/windowlist  # Your PKGBUILD dir
+        flags: -s --noconfirm     # -s for signing
+        pgpkeys: 4148A59C         # Your key ID
+        pgpkeyserver: hkps://keys.openpgp.org  # Match your upload server
+        updpkgsums: false
+        srcinfo: false
+        namcap: true
+        aur: false
+        archlinux_keyring: true
+    
     - name: Generate repo database
       run: |
         mkdir -p release/x86_64
