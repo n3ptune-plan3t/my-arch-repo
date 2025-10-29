@@ -39,7 +39,12 @@ jobs:
           # --- 1. Setup Environment ---
           echo "Setting up environment..."
           pacman-key --init
-          pacman -Syu --noconfirm base-devel git
+          
+          #
+          # THIS IS THE FIXED LINE:
+          #
+          echo "Installing dependencies..."
+          pacman -Syu --noconfirm base-devel git libx11 libxcb libxau libxdmcp xcb-proto xorgproto
           
           # --- 2. Import GPG Key ---
           echo "Importing GPG key..."
@@ -85,31 +90,8 @@ jobs:
         GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         GITHUB_WORKSPACE: /github/workspace
-        
-    - name: Generate repo database
-      run: |
-        mkdir -p release/x86_64
-        
-        # Debug: List files in build dir (remove after testing)
-        ls -la packages/windowlist/ || echo "Build dir empty—check previous step!"
-        
-        # Use action's output for exact filename (safer than glob)
-        PACKAGE_FILE="${{ steps.build.outputs.package }}"
-        if [ -n "$PACKAGE_FILE" ] && [ -f "packages/windowlist/$PACKAGE_FILE" ]; then
-          cp "packages/windowlist/$PACKAGE_FILE" release/x86_64/
-          echo "Copied $PACKAGE_FILE to release/"
-        else
-          echo "No package file found! Build likely failed. Exiting..."
-          exit 1
-        fi
-        
-        cd release
-        repo-add --sign --verify my-repo.db.tar.gz x86_64/*.pkg.tar.zst
-      if: steps.build.outputs.success == 'true'  # Only run if build succeeded
       
     - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
+      # Only deploy if on main AND the build step was successful
+      if: github.ref == 'refs/heads/main' && steps.build.outputs.success == 'true'
       uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./release
