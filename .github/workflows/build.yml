@@ -10,27 +10,25 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # For git-based PKGBUILDs like windowlist-git
 
     # -----------------------------------------------------------------
-    # STEP: Build and Sign the package using Docker
+    # STEP: Build Unsigned Package using Docker
     # -----------------------------------------------------------------
-    - name: Build and Sign package
+    - name: Build Unsigned Package
       id: build
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       run: |
         docker run --rm \
           -v "${GITHUB_WORKSPACE}:/github/workspace" \
           -w /github/workspace \
-          -e GPG_PRIVATE_KEY \
-          -e GPG_PASSPHRASE \
           archlinux:latest /bin/bash -c "
           set -ex
 
           # --- 1. Setup Environment ---
           echo 'Setting up environment...'
           pacman-key --init
+          pacman-key --populate archlinux
 
           # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
@@ -42,31 +40,15 @@ jobs:
 
           # --- 4. Create and Setup Builder User ---
           echo 'Creating builder user...'
-          useradd -m builder
+          useradd -m -s /bin/bash builder
           chown -R builder:builder /github/workspace
 
-          # --- 5. Import GPG Key as Builder User ---
-          echo 'Importing GPG key as builder...'
-          sudo -u builder bash -c '
-            mkdir -p ~/.gnupg
-            echo \"$GPG_PRIVATE_KEY\" | gpg --batch --import --passphrase \"$GPG_PASSPHRASE\"
-          '
-
-          # --- 6. Get KEY_ID as Builder User ---
-          KEY_ID=\$(sudo -u builder gpg --list-secret-keys --with-colons | grep '^sec:' | cut -d: -f5)
-          if [ -z \"\$KEY_ID\" ]; then
-            echo '::error::No GPG secret key found!'
-            sudo -u builder gpg --list-secret-keys
-            exit 1
-          fi
-          echo 'Using GPG Key ID: \$KEY_ID'
-
-          # --- 7. Run makepkg as Builder User ---
+          # --- 5. Run makepkg as Builder User ---
           echo 'Running makepkg...'
           cd /github/workspace/packages/windowlist
-          sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key \"\$KEY_ID\"
+          sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
 
-          # --- 8. Set Outputs ---
+          # --- 6. Set Outputs ---
           echo 'Finding package file...'
           PACKAGE_FILE_ZST=\$(find . -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
 
@@ -81,10 +63,23 @@ jobs:
           echo 'success=true' >> \$GITHUB_OUTPUT
           "
 
+    # -----------------------------------------------------------------
+    # STEP: Upload Artifact
+    # -----------------------------------------------------------------
+    - name: Upload Package Artifact
+      if: steps.build.outputs.success == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: arch-package-${{ steps.build.outputs.package }}
+        path: packages/windowlist/*.pkg.tar.zst
+        retention-days: 30
+
+    # -----------------------------------------------------------------
+    # STEP: Deploy to GitHub Pages (Optional, for main branch only)
+    # -----------------------------------------------------------------
     - name: Deploy to GitHub Pages
-      # Only deploy if on main AND the build step was successful
       if: github.ref == 'refs/heads/main' && steps.build.outputs.success == 'true'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./packages/windowlist  # Adjust if needed to point to the built package
+        publish_dir: ./packages/windowlist
