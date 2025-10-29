@@ -14,37 +14,83 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+# -----------------------------------------------------------------
+      # STEP 1: Import GPG key using the standard action
+      # This replaces your old "Import GPG key" step
+      # -----------------------------------------------------------------
     - name: Import GPG key
-      run: |
-        # Write private key to a temp file (from GitHub Secret)
-        echo "${{ secrets.GPG_PRIVATE_KEY }}" > private-key.asc
-        
-        # Import with passphrase (unlocks during import)
-        echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --import --pinentry-mode loopback --passphrase-fd 0 private-key.asc
-        
-        # Clean up the temp file for security
-        rm private-key.asc
-        
-        # Verify import (optional, for debugging)
-        gpg --list-secret-keys --keyid-format SHORT
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        
-    - name: Build package
-      id: build
-      uses: heyhusen/archlinux-package-action@v2
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@v6
       with:
-        path: packages/windowlist  # Your PKGBUILD dir
-        flags: -s --noconfirm     # -s for signing
-        pgpkeys: 695B3963472E349D78E00169101EC52C4148A59C    # Your key ID
-        pgpkeyserver: hkps://keys.openpgp.org  # Match your upload server
-        updpkgsums: false
-        srcinfo: false
-        namcap: true
-        aur: false
-        archlinux_keyring: true
-    
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+        # Trust the key automatically so makepkg can use it
+        trust_level: 5 
+
+      # -----------------------------------------------------------------
+      # STEP 2: Build and Sign the package manually
+      # This replaces the "heyhusen/archlinux-package-action" step
+      # -----------------------------------------------------------------
+    - name: Build and Sign package
+      id: build
+      uses: docker://archlinux:latest
+      with:
+        entrypoint: /bin/bash
+        args: |
+          set -ex
+          
+          # --- 1. Setup Environment ---
+          # Install dependencies needed for building
+          pacman-key --init
+          pacman -Syu --noconfirm base-devel git
+          
+          # --- 2. Import GPG Key ---
+          # Import the key from the env var provided by the previous step
+          echo "${{ steps.import_gpg.outputs.gpg_private_key }}" | gpg --batch --import --passphrase "${{ secrets.GPG_PASSPHRASE }}"
+          
+          # --- 3. Run Build ---
+          # Go to the correct directory
+          cd /github/workspace/packages/windowlist
+          
+          # Create a non-root user 'builder' to run makepkg
+          useradd builder -m
+          chown -R builder:builder /github/workspace
+          
+          # Get the GPG Key ID
+          # We run this as root, but 'builder' will use it
+          KEY_ID=$(gpg --list-secret-keys --with-colons | grep 'sec:' | cut -d: -f5)
+          echo "Using GPG Key ID: $KEY_ID"
+          
+          # Run makepkg as the 'builder' user
+          # We pass the signing key ID via --sign --key
+          # We also skip PGP check for sources, as your log showed an error there
+          sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key "$KEY_ID"
+          
+          # --- 4. Set Outputs ---
+          # Find the built package file
+          PACKAGE_FILE_ZST=$(find . -maxdepth 1 -name "*.pkg.tar.zst" -print -quit)
+          
+          if [ -z "$PACKAGE_FILE_ZST" ]; then
+            echo "::error::Package build failed or .zst file not found."
+            exit 1
+          fi
+          
+          # Output the *filename* for the next step
+          PACKAGE_FILENAME=$(basename $PACKAGE_FILE_ZST)
+          echo "Found package: $PACKAGE_FILENAME"
+          echo "::set-output name=package::$PACKAGE_FILENAME"
+          echo "::set-output name=success::true"
+          
+          env:
+            # Pass the GPG secrets into the container
+            GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
+            GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+            # This is needed to mount the workspace
+            GITHUB_WORKSPACE: /github/workspace 
+          volumes:
+            # Mount the workspace into the container
+            - ${{ github.workspace }}:/github/workspace
+        
     - name: Generate repo database
       run: |
         mkdir -p release/x86_64
