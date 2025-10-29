@@ -19,6 +19,7 @@ jobs:
     - name: Build Unsigned Package
       id: build
       run: |
+        # Run the build in Docker
         docker run --rm \
           -v "${GITHUB_WORKSPACE}:/github/workspace" \
           -w /github/workspace \
@@ -32,7 +33,7 @@ jobs:
 
           # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
-          pacman -Syu --noconfirm base-devel git sudo libx11 libxcb libxau libxdmcp xcb-proto xorgproto
+          pacman -Syu --needed --noconfirm base-devel git sudo libx11 libxcb libxau libxdmcp xcb-proto xorgproto
 
           # --- 3. Configure sudoers for builder ---
           echo 'Configuring sudoers...'
@@ -48,20 +49,23 @@ jobs:
           cd /github/workspace/packages/windowlist
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
 
-          # --- 6. Set Outputs ---
-          echo 'Finding package file...'
-          PACKAGE_FILE_ZST=\$(find . -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
-
-          if [ -z \"\$PACKAGE_FILE_ZST\" ]; then
-            echo '::error::Package build failed or .zst file not found.'
-            exit 1
-          fi
-
-          PACKAGE_FILENAME=\$(basename \$PACKAGE_FILE_ZST)
-          echo 'Found package: \$PACKAGE_FILENAME'
-          echo 'package=\$PACKAGE_FILENAME' >> \$GITHUB_OUTPUT
-          echo 'success=true' >> \$GITHUB_OUTPUT
+          # --- 6. Log Success (no outputs here; handled on host) ---
+          echo 'Build completed successfully inside container.'
           "
+
+        # --- Host-Side: Check for Built Package and Set Outputs ---
+        echo 'Checking for built package on host...'
+        PACKAGE_FILE_ZST=$(find packages/windowlist -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+
+        if [ -z "$PACKAGE_FILE_ZST" ]; then
+          echo '::error::Package build failed or .zst file not found.'
+          exit 1
+        fi
+
+        PACKAGE_FILENAME=$(basename "$PACKAGE_FILE_ZST")
+        echo "Found package: $PACKAGE_FILENAME"
+        echo "package=$PACKAGE_FILENAME" >> $GITHUB_OUTPUT
+        echo "success=true" >> $GITHUB_OUTPUT
 
     # -----------------------------------------------------------------
     # STEP: Upload Artifact
