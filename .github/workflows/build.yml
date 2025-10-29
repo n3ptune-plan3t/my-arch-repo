@@ -46,7 +46,9 @@ jobs:
           
           # --- 2. Import GPG Key ---
           # Import the key from the env var provided by the previous step
-          echo "${{ steps.import_gpg.outputs.gpg_private_key }}" | gpg --batch --import --passphrase "${{ secrets.GPG_PASSPHRASE }}"
+          # Your log showed 'echo ""', which means this variable was empty.
+          # Make sure the 'env:' block below is present!
+          echo "${{ env.GPG_PRIVATE_KEY }}" | gpg --batch --import --passphrase "${{ env.GPG_PASSPHRASE }}"
           
           # --- 3. Run Build ---
           # Go to the correct directory
@@ -63,7 +65,6 @@ jobs:
           
           # Run makepkg as the 'builder' user
           # We pass the signing key ID via --sign --key
-          # We also skip PGP check for sources, as your log showed an error there
           sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key "$KEY_ID"
           
           # --- 4. Set Outputs ---
@@ -81,15 +82,12 @@ jobs:
           echo "::set-output name=package::$PACKAGE_FILENAME"
           echo "::set-output name=success::true"
           
-          env:
-            # Pass the GPG secrets into the container
-            GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
-            GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-            # This is needed to mount the workspace
-            GITHUB_WORKSPACE: /github/workspace 
-          volumes:
-            # Mount the workspace into the container
-            - ${{ github.workspace }}:/github/workspace
+      env:
+        # This 'env' block is CRITICAL for passing secrets into the container
+        GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        # This is needed to mount the workspace
+        GITHUB_WORKSPACE: /github/workspace
         
     - name: Generate repo database
       run: |
