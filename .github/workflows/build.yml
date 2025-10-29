@@ -1,97 +1,85 @@
 name: Build Arch Packages
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-# -----------------------------------------------------------------
-    # STEP 1: Import GPG key using the standard action
     # -----------------------------------------------------------------
-    - name: Import GPG key
-      id: import_gpg  # This ID is important
-      uses: crazy-max/ghaction-import-gpg@v6
-      with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        passphrase: ${{ secrets.GPG_PASSPHRASE }}
-        trust_level: 5 
-
-    # -----------------------------------------------------------------
-    # STEP 2: Build and Sign the package manually
+    # STEP: Build and Sign the package using Docker
     # -----------------------------------------------------------------
     - name: Build and Sign package
       id: build
-      uses: docker://archlinux:latest
-      with:
-        entrypoint: /bin/bash
-        args: |
+      env:
+        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      run: |
+        docker run --rm \
+          -v "${GITHUB_WORKSPACE}:/github/workspace" \
+          -w /github/workspace \
+          -e GPG_PRIVATE_KEY \
+          -e GPG_PASSPHRASE \
+          archlinux:latest /bin/bash -c "
           set -ex
-          
+
           # --- 1. Setup Environment ---
-          echo "Setting up environment..."
+          echo 'Setting up environment...'
           pacman-key --init
-          
-          #
-          # THIS IS THE FIXED LINE:
-          #
-          echo "Installing dependencies..."
-          pacman -Syu --noconfirm base-devel git libx11 libxcb libxau libxdmcp xcb-proto xorgproto
-          
-          # --- 2. Import GPG Key ---
-          echo "Importing GPG key..."
-          echo "${{ env.GPG_PRIVATE_KEY }}" | gpg --batch --import --passphrase "${{ env.GPG_PASSPHRASE }}"
-          
-          # --- 3. Run Build ---
-          echo "Changing directory..."
+
+          # --- 2. Install Dependencies (added sudo) ---
+          echo 'Installing dependencies...'
+          pacman -Syu --noconfirm base-devel git sudo libx11 libxcb libxau libxdmcp xcb-proto xorgproto
+
+          # --- 3. Import GPG Key ---
+          echo 'Importing GPG key...'
+          echo \"\$GPG_PRIVATE_KEY\" | gpg --batch --import --passphrase \"\$GPG_PASSPHRASE\"
+
+          # --- 4. Run Build ---
+          echo 'Changing directory...'
           cd /github/workspace/packages/windowlist
-          
-          echo "Creating builder user..."
-          useradd builder -m
+
+          echo 'Creating builder user...'
+          useradd -m builder
           chown -R builder:builder /github/workspace
-          
+
           # Get the GPG Key ID
-          KEY_ID=$(gpg --list-secret-keys --with-colons | grep 'sec:' | cut -d: -f5)
-          if [ -z "$KEY_ID" ]; then
-            echo "::error::No GPG secret key found!"
+          KEY_ID=\$(gpg --list-secret-keys --with-colons | grep '^sec:' | cut -d: -f5)
+          if [ -z \"\$KEY_ID\" ]; then
+            echo '::error::No GPG secret key found!'
             gpg --list-keys
             exit 1
           fi
-          echo "Using GPG Key ID: $KEY_ID"
-          
+          echo 'Using GPG Key ID: \$KEY_ID'
+
           # Run makepkg as the 'builder' user
-          echo "Running makepkg..."
-          sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key "$KEY_ID"
-          
-          # --- 4. Set Outputs ---
-          echo "Finding package file..."
-          PACKAGE_FILE_ZST=$(find . -maxdepth 1 -name "*.pkg.tar.zst" -print -quit)
-          
-          if [ -z "$PACKAGE_FILE_ZST" ]; then
-            echo "::error::Package build failed or .zst file not found."
+          echo 'Running makepkg...'
+          sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key \"\$KEY_ID\"
+
+          # --- 5. Set Outputs ---
+          echo 'Finding package file...'
+          PACKAGE_FILE_ZST=\$(find . -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+
+          if [ -z \"\$PACKAGE_FILE_ZST\" ]; then
+            echo '::error::Package build failed or .zst file not found.'
             exit 1
           fi
-          
-          PACKAGE_FILENAME=$(basename $PACKAGE_FILE_ZST)
-          echo "Found package: $PACKAGE_FILENAME"
-          echo "::set-output name=package::$PACKAGE_FILENAME"
-          echo "::set-output name=success::true"
-          
-      env:
-        # This 'env' block passes the key from STEP 1 into this container
-        GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        GITHUB_WORKSPACE: /github/workspace
-      
+
+          PACKAGE_FILENAME=\$(basename \$PACKAGE_FILE_ZST)
+          echo 'Found package: \$PACKAGE_FILENAME'
+          echo 'package=\$PACKAGE_FILENAME' >> \$GITHUB_OUTPUT
+          echo 'success=true' >> \$GITHUB_OUTPUT
+          "
+
     - name: Deploy to GitHub Pages
       # Only deploy if on main AND the build step was successful
       if: github.ref == 'refs/heads/main' && steps.build.outputs.success == 'true'
       uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./packages/windowlist  # Adjust if needed to point to the built package
