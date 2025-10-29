@@ -15,22 +15,19 @@ jobs:
       uses: actions/checkout@v4
 
 # -----------------------------------------------------------------
-      # STEP 1: Import GPG key using the standard action
-      # This replaces your old "Import GPG key" step
-      # -----------------------------------------------------------------
+    # STEP 1: Import GPG key using the standard action
+    # -----------------------------------------------------------------
     - name: Import GPG key
-      id: import_gpg
+      id: import_gpg  # This ID is important
       uses: crazy-max/ghaction-import-gpg@v6
       with:
         gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
         passphrase: ${{ secrets.GPG_PASSPHRASE }}
-        # Trust the key automatically so makepkg can use it
         trust_level: 5 
 
-      # -----------------------------------------------------------------
-      # STEP 2: Build and Sign the package manually
-      # This replaces the "heyhusen/archlinux-package-action" step
-      # -----------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # STEP 2: Build and Sign the package manually
+    # -----------------------------------------------------------------
     - name: Build and Sign package
       id: build
       uses: docker://archlinux:latest
@@ -40,35 +37,37 @@ jobs:
           set -ex
           
           # --- 1. Setup Environment ---
-          # Install dependencies needed for building
+          echo "Setting up environment..."
           pacman-key --init
           pacman -Syu --noconfirm base-devel git
           
           # --- 2. Import GPG Key ---
-          # Import the key from the env var provided by the previous step
-          # Your log showed 'echo ""', which means this variable was empty.
-          # Make sure the 'env:' block below is present!
+          echo "Importing GPG key..."
           echo "${{ env.GPG_PRIVATE_KEY }}" | gpg --batch --import --passphrase "${{ env.GPG_PASSPHRASE }}"
           
           # --- 3. Run Build ---
-          # Go to the correct directory
+          echo "Changing directory..."
           cd /github/workspace/packages/windowlist
           
-          # Create a non-root user 'builder' to run makepkg
+          echo "Creating builder user..."
           useradd builder -m
           chown -R builder:builder /github/workspace
           
           # Get the GPG Key ID
-          # We run this as root, but 'builder' will use it
           KEY_ID=$(gpg --list-secret-keys --with-colons | grep 'sec:' | cut -d: -f5)
+          if [ -z "$KEY_ID" ]; then
+            echo "::error::No GPG secret key found!"
+            gpg --list-keys
+            exit 1
+          fi
           echo "Using GPG Key ID: $KEY_ID"
           
           # Run makepkg as the 'builder' user
-          # We pass the signing key ID via --sign --key
+          echo "Running makepkg..."
           sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key "$KEY_ID"
           
           # --- 4. Set Outputs ---
-          # Find the built package file
+          echo "Finding package file..."
           PACKAGE_FILE_ZST=$(find . -maxdepth 1 -name "*.pkg.tar.zst" -print -quit)
           
           if [ -z "$PACKAGE_FILE_ZST" ]; then
@@ -76,17 +75,15 @@ jobs:
             exit 1
           fi
           
-          # Output the *filename* for the next step
           PACKAGE_FILENAME=$(basename $PACKAGE_FILE_ZST)
           echo "Found package: $PACKAGE_FILENAME"
           echo "::set-output name=package::$PACKAGE_FILENAME"
           echo "::set-output name=success::true"
           
       env:
-        # This 'env' block is CRITICAL for passing secrets into the container
+        # This 'env' block passes the key from STEP 1 into this container
         GPG_PRIVATE_KEY: ${{ steps.import_gpg.outputs.gpg_private_key }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        # This is needed to mount the workspace
         GITHUB_WORKSPACE: /github/workspace
         
     - name: Generate repo database
