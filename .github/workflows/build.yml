@@ -32,36 +32,41 @@ jobs:
           echo 'Setting up environment...'
           pacman-key --init
 
-          # --- 2. Install Dependencies (added sudo) ---
+          # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
           pacman -Syu --noconfirm base-devel git sudo libx11 libxcb libxau libxdmcp xcb-proto xorgproto
 
-          # --- 3. Import GPG Key ---
-          echo 'Importing GPG key...'
-          echo \"\$GPG_PRIVATE_KEY\" | gpg --batch --import --passphrase \"\$GPG_PASSPHRASE\"
+          # --- 3. Configure sudoers for builder ---
+          echo 'Configuring sudoers...'
+          echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-          # --- 4. Run Build ---
-          echo 'Changing directory...'
-          cd /github/workspace/packages/windowlist
-
+          # --- 4. Create and Setup Builder User ---
           echo 'Creating builder user...'
           useradd -m builder
           chown -R builder:builder /github/workspace
 
-          # Get the GPG Key ID
-          KEY_ID=\$(gpg --list-secret-keys --with-colons | grep '^sec:' | cut -d: -f5)
+          # --- 5. Import GPG Key as Builder User ---
+          echo 'Importing GPG key as builder...'
+          sudo -u builder bash -c '
+            mkdir -p ~/.gnupg
+            echo \"$GPG_PRIVATE_KEY\" | gpg --batch --import --passphrase \"$GPG_PASSPHRASE\"
+          '
+
+          # --- 6. Get KEY_ID as Builder User ---
+          KEY_ID=\$(sudo -u builder gpg --list-secret-keys --with-colons | grep '^sec:' | cut -d: -f5)
           if [ -z \"\$KEY_ID\" ]; then
             echo '::error::No GPG secret key found!'
-            gpg --list-keys
+            sudo -u builder gpg --list-secret-keys
             exit 1
           fi
           echo 'Using GPG Key ID: \$KEY_ID'
 
-          # Run makepkg as the 'builder' user
+          # --- 7. Run makepkg as Builder User ---
           echo 'Running makepkg...'
+          cd /github/workspace/packages/windowlist
           sudo -u builder makepkg --noconfirm --skippgpcheck --sign --key \"\$KEY_ID\"
 
-          # --- 5. Set Outputs ---
+          # --- 8. Set Outputs ---
           echo 'Finding package file...'
           PACKAGE_FILE_ZST=\$(find . -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
 
