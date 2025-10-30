@@ -46,7 +46,7 @@ jobs:
 
           # --- 5. Run makepkg as Builder User ---
           echo 'Running makepkg...'
-          cd /github/workspace/packages/windowlist
+          cd /github/workspace/packages/noctalia-shell
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
 
           # --- 6. Log Success (no outputs here; handled on host) ---
@@ -55,7 +55,7 @@ jobs:
 
         # --- Host-Side: Check for Built Package and Set Outputs ---
         echo 'Checking for built package on host...'
-        PACKAGE_FILE_ZST=$(find packages/windowlist -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+        PACKAGE_FILE_ZST=$(find packages/noctalia-shell -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
 
         if [ -z "$PACKAGE_FILE_ZST" ]; then
           echo '::error::Package build failed or .zst file not found.'
