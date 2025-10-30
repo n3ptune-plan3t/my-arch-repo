@@ -1,7 +1,7 @@
 # Maintainer: linkfrg <linkfrg.dev@proton.me>
 pkgname=python-ignis-git
 _pkgname=ignis
-pkgver=0.5.r123.g2cf7e62
+pkgver=0.5.r123.g57017f8
 pkgrel=1
 pkgdesc="A widget framework for building desktop shells, written and configurable in Python"
 arch=('x86_64')
