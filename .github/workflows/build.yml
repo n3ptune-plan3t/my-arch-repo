@@ -33,15 +33,13 @@ jobs:
 
           # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
-          pacman -Syu --needed --noconfirm base-devel git sudo python-hatchling python-hatch-vcs python-build python-installer python-wheel python
-         glib2
-         gtk4
-         gtk4-layer-shell
-         python-cairo
-         python-gobject
-         python-click
-         python-loguru
-         python-rich
+          pacman -Syu --needed --noconfirm base-devel git sudo python-hatchling python-hatch-vcs python-build python-installer python-wheel python glib2 gtk4 \
+         gtk4-layer-shell \
+         python-cairo \
+         python-gobject \
+         python-click \
+         python-loguru \
+         python-rich \
 
           # --- 3. Configure sudoers for builder ---
           echo 'Configuring sudoers...'
