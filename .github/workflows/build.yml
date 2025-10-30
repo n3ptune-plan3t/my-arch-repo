@@ -33,13 +33,12 @@ jobs:
 
           # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
-          pacman -Syu --needed --noconfirm base-devel git sudo python-hatchling python-hatch-vcs python-build python-installer python-wheel python glib2 gtk4 \
-         gtk4-layer-shell \
-         python-cairo \
-         python-gobject \
-         python-click \
-         python-loguru \
-         python-rich \
+          pacman -Syu --needed --noconfirm base-devel git sudo \
+          gobject-introspection \
+          meson \
+          glib2 \
+         glib2-devel \
+         libpulse \
 
           # --- 3. Configure sudoers for builder ---
           echo 'Configuring sudoers...'
@@ -52,7 +51,7 @@ jobs:
 
           # --- 5. Run makepkg as Builder User ---
           echo 'Running makepkg...'
-          cd /github/workspace/packages/ignis
+          cd /github/workspace/packages/ignis-gvc
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
 
           # --- 6. Log Success (no outputs here; handled on host) ---
@@ -61,7 +60,7 @@ jobs:
 
         # --- Host-Side: Check for Built Package and Set Outputs ---
         echo 'Checking for built package on host...'
-        PACKAGE_FILE_ZST=$(find packages/ignis -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
+        PACKAGE_FILE_ZST=$(find packages/ignis-gvc -maxdepth 1 -name '*.pkg.tar.zst' -print -quit)
 
         if [ -z "$PACKAGE_FILE_ZST" ]; then
           echo '::error::Package build failed or .zst file not found.'
@@ -81,7 +80,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: arch-package-${{ steps.build.outputs.package }}
-        path: packages/ignis/*.pkg.tar.zst
+        path: packages/ignis-gvc/*.pkg.tar.zst
         retention-days: 30
 
     # -----------------------------------------------------------------
@@ -92,4 +91,4 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./packages/ignis
+        publish_dir: ./packages/ignis-gvc
