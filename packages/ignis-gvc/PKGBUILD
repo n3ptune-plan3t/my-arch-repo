@@ -1,7 +1,7 @@
 # Maintainer: linkfrg <linkfrg.dev@proton.me>
 pkgname=ignis-gvc-git
 _pkgname=ignis-gvc
-pkgver=0.1.0.r1.g03e1dde
+pkgver=0.1.0.r1.gf2c9f10
 pkgrel=1
 pkgdesc="A standalone libgvc for Ignis"
 arch=('x86_64')
