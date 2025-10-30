@@ -1,27 +1,49 @@
-# Maintainer: Tuure Piitulainen <tuure.piitulainen@gmail.com>
-PACKAGER="n3ptune-plan3t <n3ptune@plan3t>"
-_pkgname="windowlist"
-pkgname="windowlist-git"
-provides=("windowlist")
-conflicts=("windowlist")
-pkgver="v0.1.0.r0.g65c5729"
+# Maintainer: linkfrg <linkfrg.dev@proton.me>
+pkgname=python-ignis-git
+_pkgname=ignis
+pkgver=0.5.r149.g57017f8
 pkgrel=1
-pkgdesc="Polybar custom module - List all open windows, click to switch focus or minimize"
-arch=("x86_64")
-url="https://github.com/tuurep/windowlist"
-license=("MIT")
-depends=("libx11" "glibc")
-makedepends=("git")
-source=("${pkgname}::git+${url}.git")
-sha256sums=("SKIP")
+pkgdesc="A widget framework for building desktop shells, written and configurable in Python"
+arch=('x86_64')
+url="https://github.com/ignis-sh/ignis"
+license=('LGPL-2.1-or-later')
+makedepends=(python-hatchling
+             python-hatch-vcs
+             python-build
+             python-installer
+             python-wheel)
+depends=(python
+         glib2
+         gtk4
+         gtk4-layer-shell
+         python-cairo
+         python-gobject
+         python-click
+         python-loguru
+         python-rich)
+optdepends=('gpu-screen-recorder: required for Recorder Service'
+            'networkmanager: required for Network Service'
+            'dart-sass: SASS/SCSS compilation support'
+            'upower: required for UPower Service'
+            'gnome-bluetooth-3.0: required for Bluetooth Service'
+            'ignis-gvc-git: required for Audio Service')
+
+provides=('python-ignis' 'ignis' 'ignis-git')
+conflicts=('python-ignis' 'ignis' 'ignis-git')
+source=("git+${url}")
+sha256sums=('SKIP')
 
 pkgver() {
-        cd "$pkgname"
-        git describe --long --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+  cd $srcdir/$_pkgname
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd $srcdir/$_pkgname
+  python -m build --wheel --no-isolation
 }
 
 package() {
-  cd "${srcdir}/${pkgname}"
-  BINDIR="$pkgdir/usr/bin" make install
-  install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  cd $srcdir/$_pkgname
+  python -m installer --destdir="$pkgdir" dist/*.whl
 }
