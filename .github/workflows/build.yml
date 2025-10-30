@@ -52,7 +52,7 @@ jobs:
 
           # --- 5. Run makepkg as Builder User ---
           echo 'Running makepkg...'
-          cd /github/workspace/packages/noctalia-shell
+          cd /github/workspace/packages/ignis
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
 
           # --- 6. Log Success (no outputs here; handled on host) ---
