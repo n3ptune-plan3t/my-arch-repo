@@ -82,7 +82,6 @@ jobs:
             bluez \
             power-profiles-daemon \
             cliphist \
-            gpu-screen-recorder \
             wl-clipboard \
             gtk-layer-shell
           echo "Downloaded all repository dependencies to /var/cache/pacman/pkg/"
@@ -98,7 +97,8 @@ jobs:
             libastal \
             libastal-4 \
             libastal-niri-git \
-            aylurs-gtk-shell-git
+            aylurs-gtk-shell-git \
+            gpu-screen-recorder
           EOF
           echo "Built and installed all AUR dependencies"
 
