@@ -14,15 +14,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Change to Package Directory
-      run: cd packages/delta-shell-git
+    - name: Debug: List Repository Structure
+      run: |
+        echo "Repository root contents:"
+        ls -la
+        echo "Contents of packages:"
+        ls -la packages || echo "No packages dir"
+        echo "Contents of packages/name:"
+        ls -la packages/name || echo "No packages/name dir"
+        echo "Does PKGBUILD exist?"
+        ls -la packages/name/PKGBUILD || echo "PKGBUILD not found"
 
     - name: Makepkg Build and Check
       id: makepkg
       uses: edlanglois/pkgbuild-action@v1
-      # Optional: customize makepkg args, e.g., for clean build
-      # with:
-      #   args: --clean --nocheck
+      with:
+        pkgdir: packages/delta-shell-git  # Ensure this path matches your repo structure exactly
+        # Optional: customize makepkg args, e.g., for clean build
+        # makepkgArgs: --clean --nocheck
 
     - name: Print Package Files
       if: success()
