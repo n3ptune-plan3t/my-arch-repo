@@ -14,7 +14,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Debug: List Repository Structure
+    - name: Debug List Repository Structure
       run: |
         echo "Repository root contents:"
         ls -la
