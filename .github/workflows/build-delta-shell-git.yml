@@ -55,8 +55,7 @@ jobs:
           makepkg -si --noconfirm
           EOF
           
-          # Clean up sudoers
-          sed -i '$ d' /etc/sudoers
+          # DO NOT Clean up sudoers here, we still need it for paru
           
           echo "Installed paru AUR helper"
 
@@ -137,6 +136,11 @@ jobs:
           
           # Fix permissions for the artifact upload
           chown -R builduser:builduser /home/builduser/all-packages
+          
+          # Clean up sudoers file NOW that we are done
+          # This command deletes any line starting with "builduser"
+          sed -i '/^builduser/d' /etc/sudoers
+          
           echo "Moved all .pkg.tar.zst files to /home/builduser/all-packages/"
 
       - name: 8. Upload All-Packages Artifact
