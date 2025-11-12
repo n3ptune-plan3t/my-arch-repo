@@ -11,7 +11,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # For git-based PKGBUILDs like delta-shell
+        fetch-depth: 0 # For git-based PKGBUILDs like delta-shell-git
     # -----------------------------------------------------------------
     # STEP: Build Unsigned Package using Docker
     # -----------------------------------------------------------------
@@ -30,7 +30,7 @@ jobs:
           pacman-key --populate archlinux
           # --- 2. Install Dependencies ---
           echo 'Installing dependencies...'
-          pacman -Syu --needed --noconfirm base-devel git sudo meson nodejs unzip dart-sass
+          pacman -Syu --needed --noconfirm base-devel git sudo meson nodejs npm unzip dart-sass wireplumber networkmanager wl-clipboard upower libadwaita
           # --- 3. Configure sudoers for builder ---
           echo 'Configuring sudoers...'
           echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
@@ -38,16 +38,39 @@ jobs:
           echo 'Creating builder user...'
           useradd -m -s /bin/bash builder
           chown -R builder:builder /github/workspace
-          # --- 5. Run makepkg as Builder User ---
+          # --- 5. Build AUR Dependencies as Builder User ---
+          echo 'Building AUR dependencies...'
+          sudo -u builder bash -c '
+            cd /github/workspace
+            # Build libastal-niri-git
+            git clone https://aur.archlinux.org/libastal-niri-git.git
+            cd libastal-niri-git
+            makepkg -si --noconfirm --skippgpcheck --clean --cleanbuild
+            cd ..
+            rm -rf libastal-niri-git
+            # Build libastal-meta
+            git clone https://aur.archlinux.org/libastal-meta.git
+            cd libastal-meta
+            makepkg -si --noconfirm --skippgpcheck --clean --cleanbuild
+            cd ..
+            rm -rf libastal-meta
+            # Build aylurs-gtk-shell-git
+            git clone https://aur.archlinux.org/aylurs-gtk-shell-git.git
+            cd aylurs-gtk-shell-git
+            makepkg -si --noconfirm --skippgpcheck --clean --cleanbuild
+            cd ..
+            rm -rf aylurs-gtk-shell-git
+          '
+          # --- 6. Run makepkg as Builder User ---
           echo 'Running makepkg...'
-          cd /github/workspace/packages/delta-shell
+          cd /github/workspace/packages/delta-shell-git
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
-          # --- 6. Log Success (no outputs here; handled on host) ---
+          # --- 7. Log Success (no outputs here; handled on host) ---
           echo 'Build completed successfully inside container.'
           "
         # --- Host-Side: Check for Built Packages and Set Outputs ---
         echo 'Checking for built packages on host...'
-        NUM_PACKAGES=$(find packages/delta-shell -maxdepth 1 -name '*.pkg.tar.zst' | wc -l)
+        NUM_PACKAGES=$(find packages/delta-shell-git -maxdepth 1 -name '*.pkg.tar.zst' | wc -l)
         if [ "$NUM_PACKAGES" -eq 0 ]; then
           echo '::error::Package build failed or no .zst files found.'
           exit 1
@@ -61,8 +84,8 @@ jobs:
       if: steps.build.outputs.success == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: arch-package-delta-shell
-        path: packages/delta-shell/*.pkg.tar.zst
+        name: arch-package-delta-shell-git
+        path: packages/delta-shell-git/*.pkg.tar.zst
         retention-days: 30
     # -----------------------------------------------------------------
     # STEP: Deploy to GitHub Pages (Optional, for main branch only)
@@ -72,4 +95,4 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./packages/delta-shell
+        publish_dir: ./packages/delta-shell-git
