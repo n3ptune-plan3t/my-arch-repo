@@ -11,7 +11,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # For git-based PKGBUILDs like delta-shell-git
+        fetch-depth: 0 # For git-based PKGBUILDs like delta-shell
     # -----------------------------------------------------------------
     # STEP: Build Unsigned Package using Docker
     # -----------------------------------------------------------------
@@ -40,14 +40,14 @@ jobs:
           chown -R builder:builder /github/workspace
           # --- 5. Run makepkg as Builder User ---
           echo 'Running makepkg...'
-          cd /github/workspace/packages/delta-shell-git
+          cd /github/workspace/packages/delta-shell
           sudo -u builder makepkg --noconfirm --skippgpcheck --clean --cleanbuild
           # --- 6. Log Success (no outputs here; handled on host) ---
           echo 'Build completed successfully inside container.'
           "
         # --- Host-Side: Check for Built Packages and Set Outputs ---
         echo 'Checking for built packages on host...'
-        NUM_PACKAGES=$(find packages/delta-shell-git -maxdepth 1 -name '*.pkg.tar.zst' | wc -l)
+        NUM_PACKAGES=$(find packages/delta-shell -maxdepth 1 -name '*.pkg.tar.zst' | wc -l)
         if [ "$NUM_PACKAGES" -eq 0 ]; then
           echo '::error::Package build failed or no .zst files found.'
           exit 1
@@ -61,8 +61,8 @@ jobs:
       if: steps.build.outputs.success == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: arch-package-delta-shell-git
-        path: packages/delta-shell-git/*.pkg.tar.zst
+        name: arch-package-delta-shell
+        path: packages/delta-shell/*.pkg.tar.zst
         retention-days: 30
     # -----------------------------------------------------------------
     # STEP: Deploy to GitHub Pages (Optional, for main branch only)
@@ -72,4 +72,4 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./packages/delta-shell-git
+        publish_dir: ./packages/delta-shell
