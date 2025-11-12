@@ -1,7 +1,7 @@
 # pack-refs with: peeled fully-peeled sorted 
 9b7c0a2213991444d98b823231ef9a504587d9b3 refs/heads/cmake
 e74cf0a90cac6f0f94f38ac54a3a6cb66f01c3fd refs/heads/hyprbars
-bbb8d2cb0eb667f2911103eadb3d1e8176f4462c refs/heads/main
+be3cbf60b4b6a90c6e0d947e1e8cf791062b81fb refs/heads/main
 50d3fbe28f1885f512c096b8cc37dcd6f5708b42 refs/heads/meson
 93c93284c592363803a2f0e01b6816532761a646 refs/heads/nix
 205ef4d7f8adf8d831d053e87f0e0df98022476a refs/heads/pluginBuilder
@@ -97,7 +97,7 @@ b168195f7e4b26b42559b649b1ac1362cdd07569 refs/pull/427/head
 56cbbe2372c7c7ce474367be689c817dd762b670 refs/pull/429/head
 7ff88838f80252b8ca6f3ea6aadd5efc51bc3930 refs/pull/43/head
 fac8368a7f1de2ecf32e7ff73c66fce98136639d refs/pull/433/head
-ceb8c22f28fe470e21fd95b70f3f9b818d740cc8 refs/pull/433/merge
+add1e7436d263121a98589347b7098d91969ee61 refs/pull/433/merge
 79f32057c0d4dedf66eefea8e5365faba4130640 refs/pull/437/head
 8080f405e74ff356ef0e08a8878b1e8709706476 refs/pull/441/head
 455a322ff42ca41419bb7293ab30eecdb3fe0340 refs/pull/441/merge
@@ -120,7 +120,7 @@ d321dfcd6f341c5efce08466924f4e7bed961b77 refs/pull/489/head
 975100d1100a439535095642481a0083cb9220c8 refs/pull/491/head
 d629a112494e8325e11d4c1376a813819b45a9c4 refs/pull/492/head
 cfbcc5eb5019aef220c80a2d81d55b453e106e92 refs/pull/496/head
-5ef1f017f842cae3b8ee06ebcc4f4d4b87100458 refs/pull/496/merge
+71c8a2083b18303d58db109d0c03cefe6eeb4dc9 refs/pull/496/merge
 c18d271e1b574ca84e323226a6c8ce35afcce78f refs/pull/498/head
 069330413b5b2db30f762a1ca9e72f2ace25acb3 refs/pull/50/head
 b322a02e28d5f1da5148c68c1e24827edf4fda4a refs/pull/502/head
@@ -131,12 +131,15 @@ ea8966a699a7bebbefbdab9d1c5232ec42dfce21 refs/pull/507/head
 9fb02a76ebdd6a3a5a8e93cfe9bc2c91d11ae912 refs/pull/509/head
 b2ef79ff0ed210b6be1a56f3ec8e93dc78a70ae4 refs/pull/51/head
 3e915a99ebfadd596f8991f87d8921330e716b78 refs/pull/515/head
-a3fd4fca82a75c602180a82c93627f02a968e935 refs/pull/515/merge
+2ece715b72bfe78f2af61609d132c9c42171cde3 refs/pull/515/merge
 9a40f1c2c3fb2b0f38d7841013510e384dd72e0f refs/pull/520/head
 aecdd1f145c3286b33d96001259f51ea32421695 refs/pull/524/head
 65aac201d7ed629010cf048bc17327f100887e19 refs/pull/529/head
 6f6a83c17bb032ec339a336ab62e60b2e1b32daa refs/pull/535/head
-561fb3359e510582d3048fbaaf69a1c33f48ebe1 refs/pull/535/merge
+cdeca4aac7dc121bc0eaa49a35ae792abdcff1fc refs/pull/537/head
+27196629c03a8189b937d035fdd1c4e99444a6b0 refs/pull/537/merge
+2d51d2d09ee838bdf3740f95e7c5929f150f4a86 refs/pull/538/head
+d3c887f5e04560ea4c08d7676babb1049a22fcd1 refs/pull/538/merge
 7dd03d6f009ff3573be25d567151e3b459dff688 refs/pull/64/head
 5a7604a32cf9c385e1875ab68666497e3726f92a refs/pull/78/head
 83cbd3b2c22c8ff4601b18a9cc367595b3908ee1 refs/pull/88/head
