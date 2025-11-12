@@ -1,0 +1,43 @@
+name: Build AUR Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Change to Package Directory
+      run: cd packages/delta-shell-git
+
+    - name: Makepkg Build and Check
+      id: makepkg
+      uses: edlanglois/pkgbuild-action@v1
+      # Optional: customize makepkg args, e.g., for clean build
+      # with:
+      #   args: --clean --nocheck
+
+    - name: Print Package Files
+      if: success()
+      run: |
+        echo "Successfully created the following package archive(s):"
+        echo "${{ steps.makepkg.outputs.pkgfile0 }}"
+        echo "${{ steps.makepkg.outputs.pkgfile1 }}"
+        # Add more if multiple packages
+
+    - name: Upload Package Artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: aur-package
+        path: |
+          ${{ steps.makepkg.outputs.pkgfile0 }}
+          ${{ steps.makepkg.outputs.pkgfile1 }}
+        retention-days: 7  # Keep for 7 days
