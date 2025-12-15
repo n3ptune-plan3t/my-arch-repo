@@ -1,27 +1,16 @@
-# This workflow builds the 'delta-shell-git' AUR package and its dependencies
-# It uses an Arch Linux container, installs an AUR helper (paru) to
-# build the dependency chain, and then manually builds the final package.
-
-name: Build delta-shell-git
-
+name: Build cairo-dock
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  # Runs on pushes to the main branch
   push:
     branches:
       - main
-
 jobs:
   build:
     name: Build Arch Package
     runs-on: ubuntu-latest
-
-    # Use the official Arch Linux container with base-devel tools
     container:
       image: archlinux:base-devel
       options: --privileged
-
     steps:
       - name: 1. Set up Environment and Update System
         run: |
@@ -30,122 +19,93 @@ jobs:
 
       - name: 2. Install Build Tools
         run: |
-          # Install basic tools needed to build paru and our package
-          pacman -S --noconfirm --needed git rust
+          pacman -S --noconfirm --needed git base-devel cmake extra-cmake-modules wayland-protocols glu curl
           echo "Installed build tools"
 
       - name: 3. Install 'paru' (AUR Helper)
         run: |
-          # We need an AUR helper to build the AUR dependencies
-          # We build 'paru' from source here.
-          # We run as 'nobody' user to build the package securely.
           pacman -S --noconfirm --needed rust
-          
-          # Create a non-root build user
+         
           useradd -m builduser
-          
-          # Give the build user passwordless sudo rights to install packages
+         
           echo 'builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman' >> /etc/sudoers
-          
-          # Switch to the build user to build paru
+         
           sudo -u builduser bash <<'EOF'
           cd ~
           git clone https://aur.archlinux.org/paru.git
           cd paru
           makepkg -si --noconfirm
           EOF
-          
-          # DO NOT Clean up sudoers here, we still need it for paru
-          
+         
           echo "Installed paru AUR helper"
 
       - name: 4. Download Repository Dependencies
         run: |
-          # Download all repo dependencies to the pacman cache
-          # We use --downloadonly so they aren't installed
-          # We use -dd to skip dependency checks (we just want the files)
           pacman -Sdd --downloadonly --noconfirm --needed \
-            git \
-            rust \
-            go \
-            meson \
-            vala \
+            gtk3 \
+            gdk-pixbuf2 \
             glib2 \
-            json-glib \
-            gobject-introspection \
-            npm \
-            gjs \
-            brightnessctl \
-            dart-sass \
-            fd \
-            bluez \
-            power-profiles-daemon \
-            cliphist \
-            wl-clipboard \
+            cairo \
+            pango \
+            librsvg \
+            dbus \
+            dbus-glib \
+            libxml2 \
+            libxrender \
+            glu \
+            curl \
+            libx11 \
+            libxtst \
+            libxcomposite \
+            libxrandr \
+            libxinerama \
+            wayland \
+            json-c \
             gtk-layer-shell
           echo "Downloaded all repository dependencies to /var/cache/pacman/pkg/"
 
       - name: 5. Build and Install AUR Dependencies
         run: |
-          # Use 'paru' as the build user to resolve, build, and *install*
-          # the entire AUR dependency tree for delta-shell-git.
-          # The built packages will be cached in /home/builduser/.cache/paru/pkg/
-          sudo -u builduser bash <<'EOF'
-          paru -S --noconfirm --needed \
-            gtk4-layer-shell \
-            libastal \
-            libastal-4 \
-            libastal-niri-git \
-            aylurs-gtk-shell-git \
-            gpu-screen-recorder
-          EOF
-          echo "Built and installed all AUR dependencies"
+          # No known AUR dependencies for cairo-dock (gtk-layer-shell is in extra repo)
+          echo "No AUR dependencies to build"
 
-      - name: 6. Build 'delta-shell-git' Package
+      - name: 6. Build 'cairo-dock' Package
         run: |
-          # Finally, clone and build the target package as the build user
-          # All dependencies (repo and AUR) are already installed.
+          # Create a local directory with the custom PKGBUILD and source
+          # (assuming the PKGBUILD content is in the repo at the same location as this workflow)
+          mkdir -p /home/builduser/cairo-dock-src
+          cp PKGBUILD /home/builduser/cairo-dock-src/  # Adjust if the path differs; "directory location is same"
+          chown -R builduser:builduser /home/builduser/cairo-dock-src
+         
           sudo -u builduser bash <<'EOF'
-          cd ~
-          git clone https://aur.archlinux.org/delta-shell-git.git
-          cd delta-shell-git
-          # Use 'makepkg -f' (force) because we are in a clean environment
-          # Do not use '-s' as we have already installed all dependencies.
+          cd ~/cairo-dock-src
+          # Download the source (as specified in the PKGBUILD)
+          curl -L -o cairo-dock-3.6.1.1.tar.gz "https://github.com/n3ptune-plan3t/cairo-dock-core/archive/3.6.1.1.tar.gz"
+          # Verify checksum if needed (already in PKGBUILD)
           makepkg -f --noconfirm
           EOF
-          echo "Built delta-shell-git package"
+          echo "Built cairo-dock package"
 
       - name: 7. Consolidate All Packages
         run: |
-          # Create a single directory to hold all packages
           mkdir -p /home/builduser/all-packages
-          
-          # Move repo dependencies (needs root)
-          mv /var/cache/pacman/pkg/*.pkg.tar.zst /home/builduser/all-packages/
-          
-          # Move AUR dependencies (as builduser)
+         
+          # Move downloaded repo dependencies
+          mv /var/cache/pacman/pkg/*.pkg.tar.zst /home/builduser/all-packages/ 2>/dev/null || true
+         
+          # Move the main package
           sudo -u builduser bash <<'EOF'
-          # Move paru's cached builds
-          if ls /home/builduser/.cache/paru/pkg/*.pkg.tar.zst 1> /dev/null 2>&1; then
-            mv /home/builduser/.cache/paru/pkg/*.pkg.tar.zst /home/builduser/all-packages/
-          fi
-          
-          # Move the main package build
-          mv /home/builduser/delta-shell-git/*.pkg.tar.zst /home/builduser/all-packages/
+          mv ~/cairo-dock-src/*.pkg.tar.zst /home/builduser/all-packages/
           EOF
-          
-          # Fix permissions for the artifact upload
+         
           chown -R builduser:builduser /home/builduser/all-packages
-          
-          # Clean up sudoers file NOW that we are done
-          # This command deletes any line starting with "builduser"
+         
           sed -i '/^builduser/d' /etc/sudoers
-          
+         
           echo "Moved all .pkg.tar.zst files to /home/builduser/all-packages/"
 
       - name: 8. Upload All-Packages Artifact
         uses: actions/upload-artifact@v4
         with:
           name: all-packages
-          # The packages are all in this one directory
           path: /home/builduser/all-packages/
